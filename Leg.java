@@ -11,8 +11,7 @@ public class Leg {
 	private int windVelocity;
 	private int magneticVariation;
 	private boolean isClimbingLeg;
-	private int startAltitude;
-	private int endAltitude;
+	private int altitude;
 	private ClimbPerformance climbPerformance;
 	private double groundSpeed;
 	private double windCorrectionAngle;
@@ -23,30 +22,42 @@ public class Leg {
 	private double distance;
 	private double estimatedTimeEnroute;
 	private double estimatedFuelConsumption;
+	private double cruiseFuelConsumption;
 
-	public Leg(String startPoint, String endPoint, int trueCourse, int trueAirSpeed, int startAltitude, int endAltitude, int distance, int windDirection, int windVelocity, int magneticVariation, double deviation) {
+	public Leg(String startPoint, String endPoint, int trueCourse, int trueAirSpeed, int altitude, int distance, int windDirection, int windVelocity, int magneticVariation, double deviation, double cruiseFuelConsumption, boolean isClimbingLeg) {
 		this.startPoint = startPoint;
 		this.endPoint = endPoint;
 		this.trueCourse = trueCourse;
 		this.trueAirSpeed = trueAirSpeed;
-		this.startAltitude = startAltitude;
-		this.endAltitude = endAltitude;
+		this.altitude = altitude;
 		this.distance = distance;
 		this.windDirection = windDirection;
 		this.windVelocity = windVelocity;
 		this.magneticVariation = magneticVariation;
 		this.deviation = deviation;
-		this.calculatePerformance();
+		this.cruiseFuelConsumption = cruiseFuelConsumption;
+		this.isClimbingLeg = isClimbingLeg;
 	}
 
-	private void calculatePerformance() {
-		if(startAltitude != endAltitude) {
-			isClimbingLeg = true;
-			climbPerformance = new ClimbPerformance(startAltitude, endAltitude);
-		} else {isClimbingLeg = false;}
+	//Returns distance to climb so that the calling program can reassign distance value for the non-climbing leg
+	private double calculatePerformance(int startAltitude, int endAltitude) {
+		climbPerformance = new ClimbPerformance(startAltitude, endAltitude);
+		this.trueAirSpeed = climbPerformance.getClimbSpeed();
+		this.estimatedFuelConsumption = climbPerformance.getFuelUsedToClimb();
+		this.estimatedTimeEnroute = climbPerformance.getTimeToClimb();
 		windCorrectionCalculation();
 		magneticHeadingCalculation();
 		courseHeadingCalculation(deviation);
+		distance = distance - (groundSpeed * estimatedTimeEnroute / 60);
+		return distance;
+	}
+
+	private void calculatePerformance() {
+		windCorrectionCalculation();
+		magneticHeadingCalculation();
+		courseHeadingCalculation(deviation);
+		this.estimatedTimeEnroute = (double)((int)(distance / groundSpeed * 60) * 100) / 100;
+		this.estimatedFuelConsumption = cruiseFuelConsumption * estimatedTimeEnroute / 60;
 	}
 
 	private void windCorrectionCalculation() {
@@ -96,8 +107,7 @@ public class Leg {
 	public int getWindVelocity() {return windVelocity;}
 	public int getMagneticVariation() {return magneticVariation;}
 	public boolean getIsClimbingLeg() {return isClimbingLeg;}
-	public int getStartAltitude() {return startAltitude;}
-	public int getEndAltitude() {return endAltitude;}
+	public int getAltitude() {return altitude;}
 	public ClimbPerformance getClimbPerformance() {return climbPerformance;}
 	public double getGroundSpeed() {return groundSpeed;}
 	public double getWindCorrectionAngle() {return windCorrectionAngle;}
@@ -108,4 +118,37 @@ public class Leg {
 	public double getDistance() {return distance;}
 	public double getEstimatedTimeEnroute() {return estimatedTimeEnroute;}
 	public double getEstimatedFuelConsumption() {return estimatedFuelConsumption;}
+
+	public String toString() {
+		if(!isClimbingLeg) {
+			return "Start Point: " + this.getStartPoint() + "\n" + "End Point: " + this.getEndPoint() + "\n" + 
+			"ALT: " + this.getAltitude() + "\n" + "Wind Direction: " + this.getWindDirection() + "\n" +
+			"Wind Velocity: " + this.getWindVelocity() + "\n" + "TAS: " + this.getTrueAirspeed() + "\n" + 
+			"TC: " + this.getTrueCourse() + "\n" + "WCA: " + this.getWindCorrectionAngle() + "\n" + 
+			"TH: " + this.getTrueHeading() + "\n" + "Var: " + this.getMagneticVariation() + "\n" + 
+			"MH: " + this.getMagneticHeading() + "\n" + "Dev: " + this.getDeviation() + "\n" +
+			"CH: " + this.getCourseHeading() + "\n" + "GS: " + this.getGroundSpeed() + "\n" +
+			"Dist: " + this.getDistance() + "\n" + "ETE: " + this.getEstimatedTimeEnroute() + "\n" + 
+			"Fuel: " + this.getEstimatedFuelConsumption();
+		} else {
+			return "Start Point: " + this.getStartPoint() + "\n" + "End Point: " + this.getEndPoint() + "\n" + 
+			"ALT: " + "CLIMB" + "\n" + "Wind Direction: " + this.getWindDirection() + "\n" +
+			"Wind Velocity: " + this.getWindVelocity() + "\n" + "TAS: " + this.getTrueAirspeed() + "\n" + 
+			"TC: " + this.getTrueCourse() + "\n" + "WCA: " + this.getWindCorrectionAngle() + "\n" + 
+			"TH: " + this.getTrueHeading() + "\n" + "Var: " + this.getMagneticVariation() + "\n" +
+			"MH: " + this.getMagneticHeading() + "\n" + "Dev: " + this.getDeviation() + "\n" +
+			"CH: " + this.getCourseHeading() + "\n" + "GS: " + this.getGroundSpeed() + "\n" +
+			"Dist: " + this.getDistance() + "\n" + "ETE: " + this.getEstimatedTimeEnroute() + "\n" + 
+			"Fuel: " + this.getEstimatedFuelConsumption();
+		}
+	}
+	public static void main(String[] args) {
+		Leg leg1 = new Leg("Lake in the hills", "Marengo", 287, 117, 4500, 13, 220, 26, 3, 0, 9.9, false);
+		leg1.calculatePerformance();
+		System.out.println(leg1);
+
+		Leg leg2 = new Leg("Bangs Lake", "TOC", 315, 119, 2500, 8, 220, 26, 3, 0, 9.9, true);
+		System.out.println("Distance to TOC: " + leg2.calculatePerformance(leg2.getAltitude(), 4500));
+		System.out.println(leg2);
+	}
 }
